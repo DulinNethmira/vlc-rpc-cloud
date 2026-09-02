@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VLC RPC Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            500: '#5865F2', // Discord Blurple
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div id="login-screen" class="flex flex-col items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700">
+            <h1 class="text-3xl font-bold mb-6 text-center text-white"><i class="fas fa-shield-alt text-brand-500 mr-2"></i>Admin Login</h1>
+            <input type="email" id="email" placeholder="Admin Email" class="w-full bg-gray-700 border border-gray-600 rounded p-3 mb-4 text-white focus:outline-none focus:border-brand-500 transition-colors">
+            <input type="password" id="password" placeholder="Password" class="w-full bg-gray-700 border border-gray-600 rounded p-3 mb-6 text-white focus:outline-none focus:border-brand-500 transition-colors">
+            <button onclick="login()" class="w-full bg-brand-500 hover:bg-indigo-600 text-white font-bold py-3 px-4 rounded transition-colors shadow-lg shadow-indigo-500/30">
+                Authenticate
+            </button>
+            <p id="login-error" class="text-red-400 text-sm mt-4 text-center hidden"></p>
+        </div>
+    </div>
+
+    <div id="dashboard-screen" class="hidden min-h-screen">
+        <header class="bg-gray-800 border-b border-gray-700 sticky top-0 z-10 shadow-md">
+            <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold flex items-center"><i class="fas fa-chart-network text-brand-500 mr-3"></i>VLC RPC Admin</h1>
+                <div class="flex items-center gap-4">
+                    <button onclick="fetchStats()" class="text-gray-400 hover:text-white transition-colors" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button onclick="logout()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors text-sm font-medium">
+                        Log Out
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-6 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Stat Card: Online Now -->
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 text-brand-500 text-6xl group-hover:scale-110 transition-transform"><i class="fas fa-bolt"></i></div>
+                    <h3 class="text-gray-400 font-medium mb-1 relative z-10">Online Now</h3>
+                    <div id="stat-online" class="text-4xl font-bold text-white relative z-10">--</div>
+                    <p class="text-xs text-green-400 mt-2 relative z-10 flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>Live</p>
+                </div>
+
+                <!-- Stat Card: Daily Active -->
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 text-blue-500 text-6xl group-hover:scale-110 transition-transform"><i class="fas fa-calendar-day"></i></div>
+                    <h3 class="text-gray-400 font-medium mb-1 relative z-10">Daily Active Installations</h3>
+                    <div id="stat-daily" class="text-4xl font-bold text-white relative z-10">--</div>
+                    <p class="text-xs text-gray-500 mt-2 relative z-10">Unique devices today</p>
+                </div>
+
+                <!-- Stat Card: Total Installs -->
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 text-purple-500 text-6xl group-hover:scale-110 transition-transform"><i class="fas fa-laptop"></i></div>
+                    <h3 class="text-gray-400 font-medium mb-1 relative z-10">Total Installations</h3>
+                    <div id="stat-installs" class="text-4xl font-bold text-white relative z-10">--</div>
+                    <p class="text-xs text-gray-500 mt-2 relative z-10">Lifetime unique UUIDs</p>
+                </div>
+
+                <!-- Stat Card: Total Users -->
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 text-pink-500 text-6xl group-hover:scale-110 transition-transform"><i class="fas fa-users"></i></div>
+                    <h3 class="text-gray-400 font-medium mb-1 relative z-10">Registered Accounts</h3>
+                    <div id="stat-users" class="text-4xl font-bold text-white relative z-10">--</div>
+                    <p class="text-xs text-gray-500 mt-2 relative z-10">Cloud accounts created</p>
+                </div>
+            </div>
+            
+            <div class="mt-8 bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+                <h3 class="text-lg font-medium text-white mb-4">System Status</h3>
+                <div class="flex items-center text-sm">
+                    <span class="w-3 h-3 rounded-full bg-green-500 mr-3"></span>
+                    <span class="text-gray-300">All services operational. Last updated: <span id="last-updated" class="font-mono text-gray-400 ml-1">--</span></span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('admin_token');
+
+        if (token) {
+            showDashboard();
+            fetchStats();
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errEl = document.getElementById('login-error');
+            
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email, password})
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    token = data.access_token;
+                    localStorage.setItem('admin_token', token);
+                    showDashboard();
+                    fetchStats();
+                } else {
+                    const data = await res.json();
+                    errEl.textContent = data.detail || 'Login failed';
+                    errEl.classList.remove('hidden');
+                }
+            } catch (e) {
+                errEl.textContent = 'Connection error';
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('admin_token');
+            token = null;
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('dashboard-screen').classList.remove('hidden');
+        }
+
+        async function fetchStats() {
+            if (!token) return;
+            try {
+                const res = await fetch('/api/telemetry/admin/stats', {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('stat-online').textContent = data.online_now;
+                    document.getElementById('stat-daily').textContent = data.daily_active_installations;
+                    document.getElementById('stat-installs').textContent = data.total_installations;
+                    document.getElementById('stat-users').textContent = data.total_registered_users;
+                    document.getElementById('last-updated').textContent = new Date(data.timestamp).toLocaleTimeString();
+                } else if (res.status === 401 || res.status === 403) {
+                    logout();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        
+        // Auto refresh every 60s
+        setInterval(fetchStats, 60000);
+    </script>
+</body>
+</html>
