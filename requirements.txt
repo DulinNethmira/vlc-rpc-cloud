@@ -7,3 +7,4 @@ pydantic
 passlib
 argon2-cffi
 pyjwt
+python-dotenv
